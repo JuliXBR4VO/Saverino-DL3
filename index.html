@@ -434,6 +434,7 @@ UI Upgrade by JuliXBR4VO
       font-weight: 700;
       margin-bottom: 0.5rem;
       background: linear-gradient(90deg, #fff, rgba(255,255,255,0.8));
+      background-clip: text;
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
@@ -743,7 +744,7 @@ UI Upgrade by JuliXBR4VO
     <div class="container text-center">
       <h1>Saverino</h1>
       <h3>Music Player & Downloader</h3>
-      <p class="text-white opacity-75">Downloading is currently unavailable!</p>
+      <p class="text-white opacity-75">Ad-free Playback & Easy Downloads – Your Music, Your Way!</p>
     </div>
   </header>
   
@@ -769,7 +770,11 @@ UI Upgrade by JuliXBR4VO
         </form>
         
         <div class="search-toggle-container">
-          <!-- Quick search buttons will be added here by JavaScript -->
+          <!-- Quick-Search Buttons -->
+          <button class="btn btn-outline-light quick-btn" onclick="doSaavnSearch(encodeURIComponent('pop'))">Pop</button>
+          <button class="btn btn-outline-light quick-btn" onclick="doSaavnSearch(encodeURIComponent('rock'))">Rock</button>
+          <button class="btn btn-outline-light quick-btn" onclick="doSaavnSearch(encodeURIComponent('hip hop'))">Hip Hop</button>
+          <button class="btn btn-outline-light quick-btn" onclick="doSaavnSearch(encodeURIComponent('classical'))">Classical</button>
         </div>
       </div>
     </div>
