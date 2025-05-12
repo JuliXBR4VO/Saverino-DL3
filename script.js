@@ -298,3 +298,22 @@ document.getElementById("loadmore").addEventListener('click', () => {
     query = encodeURIComponent(query);
     doSaavnSearch(query, 0, true);
 });
+
+// Öffnen des Download-Popups
+const popupLink = document.getElementById('mpopupLink');
+popupLink.addEventListener('click', () => {
+    document.getElementById('mpopupBox').style.display = 'block';
+});
+
+// Schließen des Popups beim Klick auf das Schließen-Symbol
+const popupClose = document.querySelector('#mpopupBox .close');
+popupClose.addEventListener('click', () => {
+    document.getElementById('mpopupBox').style.display = 'none';
+});
+
+// Schließen beim Klick außerhalb des Modal-Contents
+window.addEventListener('click', (e) => {
+    if (e.target.id === 'mpopupBox') {
+        document.getElementById('mpopupBox').style.display = 'none';
+    }
+});
