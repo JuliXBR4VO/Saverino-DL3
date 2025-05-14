@@ -430,6 +430,17 @@ function updateSearchStatus(message) {
     const statusElement = document.getElementById('search-status');
     if (statusElement) {
         statusElement.textContent = message;
+        
+        // Setze die Farbe basierend auf der Nachricht
+        if (message.includes('Ergebnisse gefunden')) {
+            statusElement.style.color = 'var(--primary-color)';
+        } else if (message.includes('Fehler')) {
+            statusElement.style.color = '#ff5555';
+        } else if (message.includes('Suche läuft')) {
+            statusElement.style.color = 'var(--text-secondary)';
+        } else if (message.includes('Keine Ergebnisse')) {
+            statusElement.style.color = '#ff9955';
+        }
     }
 }
 
