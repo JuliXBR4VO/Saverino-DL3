@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en" >
 <head>
@@ -87,7 +88,7 @@ UI Upgrade by JuliXBR4VO
       justify-content: center;
       align-items: center;
       flex-direction: column;
-      transition: all 0.5s ease;
+      transition: all 0.5s cubic-bezier(0.19, 1, 0.22, 1);
       overflow: hidden;
     }
     
@@ -103,7 +104,8 @@ UI Upgrade by JuliXBR4VO
       filter: blur(20px);
       z-index: -1;
       transform-origin: center;
-      animation: bgAnimation 20s ease-in-out infinite alternate;
+      animation: bgAnimation 30s ease-in-out infinite alternate;
+      will-change: transform;
     }
     
     /* Animation für den Fullscreen-Hintergrund */
@@ -111,16 +113,32 @@ UI Upgrade by JuliXBR4VO
       0% {
         transform: scale(1.05) rotate(0deg);
       }
+      25% {
+        transform: scale(1.07) rotate(0.5deg);
+      }
       50% {
         transform: scale(1.1) rotate(1deg);
       }
+      75% {
+        transform: scale(1.07) rotate(0.5deg);
+      }
       100% {
-        transform: scale(1.05) rotate(-1deg);
+        transform: scale(1.05) rotate(0deg);
       }
     }
     
     .fullscreen-player.active {
       display: flex;
+      animation: fadeInPlayer 0.4s ease-out forwards;
+    }
+    
+    @keyframes fadeInPlayer {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
     }
     
     .cover-wrapper {
@@ -129,6 +147,7 @@ UI Upgrade by JuliXBR4VO
       height: 300px;
       margin-bottom: 40px;
       overflow: visible; /* Erlaubt sichtbare Überlagerung */
+      perspective: 1000px;
     }
     
     .vinyl-disc {
@@ -151,9 +170,11 @@ UI Upgrade by JuliXBR4VO
       border-radius: 50%;
       transform: translate(-50%, -50%);
       opacity: 0;
-      transition: all 0.5s ease;
+      transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
       z-index: 0;
       overflow: hidden;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+      will-change: transform, opacity;
     }
     
     /* Entfernen der alten Vinyl-Markierungen */
@@ -200,8 +221,9 @@ UI Upgrade by JuliXBR4VO
       border-radius: 20px;
       box-shadow: 0 10px 30px rgba(0,0,0,0.3);
       margin-bottom: 30px;
-      transition: all 0.5s ease;
+      transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
       z-index: 1;
+      will-change: transform;
     }
     
     .fullscreen-player.playing .fullscreen-cover {
@@ -213,6 +235,18 @@ UI Upgrade by JuliXBR4VO
       margin-bottom: 30px;
       width: 80%;
       max-width: 400px;
+      animation: fadeInUp 0.5s ease-out 0.2s both;
+    }
+    
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
     
     .fullscreen-title {
@@ -220,32 +254,47 @@ UI Upgrade by JuliXBR4VO
       font-weight: 600;
       margin-bottom: 10px;
       color: white;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
     }
     
     .fullscreen-artist {
       font-size: 20px;
       color: var(--primary-color);
       margin-bottom: 5px;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
     }
     
     .fullscreen-album {
       font-size: 16px;
       color: var(--text-secondary);
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
     }
     
     .fullscreen-controls {
       width: 80%;
       max-width: 400px;
+      background: rgba(0, 0, 0, 0.45);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(10px);
+      animation: fadeInUp 0.5s ease-out 0.3s both;
     }
     
     .progress-bar {
       width: 100%;
       height: 6px;
-      background: rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.2);
       border-radius: 3px;
       margin-bottom: 10px;
       cursor: pointer;
       position: relative;
+      overflow: hidden;
+    }
+    
+    .progress-bar:hover {
+      height: 8px;
+      background: rgba(255,255,255,0.25);
     }
     
     .progress {
@@ -255,14 +304,16 @@ UI Upgrade by JuliXBR4VO
       border-radius: 3px;
       position: absolute;
       transition: width 0.1s linear;
+      box-shadow: 0 0 8px var(--primary-color);
     }
     
     .time-info {
       display: flex;
       justify-content: space-between;
-      color: var(--text-secondary);
+      color: var(--text-primary);
       font-size: 14px;
       margin-bottom: 20px;
+      font-weight: 500;
     }
     
     .control-buttons {
@@ -273,7 +324,7 @@ UI Upgrade by JuliXBR4VO
     }
     
     .control-btn {
-      background: none;
+      background: rgba(255,255,255,0.1);
       border: none;
       color: white;
       font-size: 24px;
@@ -285,10 +336,18 @@ UI Upgrade by JuliXBR4VO
       align-items: center;
       justify-content: center;
       transition: all 0.3s ease;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
     }
     
     .control-btn:hover {
-      background: rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.2);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+    
+    .control-btn:active {
+      transform: translateY(1px);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
     }
     
     #play-pause-btn {
@@ -296,11 +355,17 @@ UI Upgrade by JuliXBR4VO
       background: var(--primary-color);
       width: 60px;
       height: 60px;
+      box-shadow: 0 4px 12px rgba(29, 185, 84, 0.4);
     }
     
     #play-pause-btn:hover {
-      transform: scale(1.1);
+      transform: scale(1.1) translateY(-2px);
       background: var(--secondary-color);
+      box-shadow: 0 6px 16px rgba(29, 185, 84, 0.5);
+    }
+    
+    #play-pause-btn:active {
+      transform: scale(1.05) translateY(1px);
     }
     
     .close-fullscreen {
@@ -309,18 +374,21 @@ UI Upgrade by JuliXBR4VO
       right: 20px;
       width: 40px;
       height: 40px;
-      background: rgba(255,255,255,0.1);
+      background: rgba(0,0,0,0.4);
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
       transition: all 0.3s ease;
+      z-index: 10;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     }
     
     .close-fullscreen:hover {
       background: rgba(255,255,255,0.2);
       transform: rotate(90deg);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
     }
     
     @keyframes spinDisc {
@@ -434,7 +502,6 @@ UI Upgrade by JuliXBR4VO
       font-weight: 700;
       margin-bottom: 0.5rem;
       background: linear-gradient(90deg, #fff, rgba(255,255,255,0.8));
-      background-clip: text;
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
@@ -743,38 +810,72 @@ UI Upgrade by JuliXBR4VO
     </nav>
     <div class="container text-center">
       <h1>Saverino</h1>
-      <h3>Music Player</h3>
-      <p class="text-white opacity-75">No Downloads available!</p>
+      <h3>Music Player & Downloader</h3>
+      <p class="text-white opacity-75">Ad-Free Experience with High-Quality Audio</p>
     </div>
   </header>
   
   <div class="container">
+    <!-- Improved Search Section -->
     <div class="search-section">
       <div class="search-container">
-        <div class="text-center">
-          <select id="saavn-bitrate" class="form-select-sm">
-            <option value="4">320kbps</option>
-            <option value="3" selected="">160kbps</option>
-            <option value="2">96kbps</option>
-            <option value="1">48kbps</option>
-          </select>
+        <div class="text-center mb-3">
+          <div class="bitrate-selector">
+            <label for="saavn-bitrate" class="bitrate-label">Audioqualität:</label>
+            <select id="saavn-bitrate" class="form-select-sm" aria-label="Wähle die Audioqualität">
+              <option value="4">320kbps (HD)</option>
+              <option value="3" selected="">160kbps (Hoch)</option>
+              <option value="2">96kbps (Mittel)</option>
+              <option value="1">48kbps (Niedrig)</option>
+            </select>
+          </div>
         </div>
         
-        <form class="text-center" action="#" method="get">
-          <div class="input-group">
-            <input class="form-control" type="text" id="saavn-search-box" placeholder="Search for songs, artists, or albums...">
-            <button class="btn btn-primary" id="saavn-search-trigger" type="submit" onclick="SaavnSearch()">
-              <i class="fas fa-search me-2"></i>Search
+        <form class="search-form" action="#" method="get" role="search">
+          <div class="input-group search-input-group">
+            <div class="search-icon">
+              <i class="fas fa-search"></i>
+            </div>
+            <input 
+              class="form-control" 
+              type="search" 
+              id="saavn-search-box" 
+              placeholder="Suche nach Songs, Künstlern oder Alben..." 
+              aria-label="Suche nach Songs, Künstlern oder Alben"
+              autocomplete="off"
+              autofocus
+            >
+            <button 
+              class="btn btn-primary search-button" 
+              id="saavn-search-trigger" 
+              type="submit" 
+              onclick="SaavnSearch()"
+              aria-label="Suchen"
+            >
+              <span class="search-button-text">Suchen</span>
+              <i class="fas fa-search search-button-icon"></i>
             </button>
+            <button 
+              type="button" 
+              class="btn btn-clear" 
+              id="clear-search" 
+              aria-label="Suchfeld leeren"
+            >
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <div class="search-help">
+            <span class="keyboard-shortcut" title="Drücke '/' um zu suchen"><i class="fas fa-keyboard"></i> Drücke <kbd>/</kbd> zum Suchen</span>
+            <span class="search-status" id="search-status"></span>
           </div>
         </form>
         
+        <div class="search-history" id="search-history">
+          <!-- Suchverlauf wird hier angezeigt -->
+        </div>
+        
         <div class="search-toggle-container">
-          <!-- Quick-Search Buttons -->
-          <button class="btn btn-outline-light quick-btn" onclick="doSaavnSearch(encodeURIComponent('pop'))">Pop</button>
-          <button class="btn btn-outline-light quick-btn" onclick="doSaavnSearch(encodeURIComponent('rock'))">Rock</button>
-          <button class="btn btn-outline-light quick-btn" onclick="doSaavnSearch(encodeURIComponent('hip hop'))">Hip Hop</button>
-          <button class="btn btn-outline-light quick-btn" onclick="doSaavnSearch(encodeURIComponent('classical'))">Classical</button>
+          <!-- Quick search buttons will be added here by JavaScript -->
         </div>
       </div>
     </div>
@@ -801,7 +902,7 @@ UI Upgrade by JuliXBR4VO
     </p>
   </div>
   
-  <!-- Fullscreen Player -->
+  <!-- Improved Fullscreen Player -->
   <div class="fullscreen-player">
     <div class="fullscreen-bg"></div>
     <div class="close-fullscreen">
@@ -888,479 +989,7 @@ UI Upgrade by JuliXBR4VO
   
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script>
-    // Loading Animation
-    function showLoader() {
-      document.querySelector('.loader-container').style.display = 'flex';
-    }
-    function hideLoader() {
-      document.querySelector('.loader-container').style.display = 'none';
-    }
-    
-    // Improved Fullscreen Player Functionality
-    const audio = document.getElementById('player');
-    const fullscreenPlayer = document.querySelector('.fullscreen-player');
-    const fullscreenBg = document.querySelector('.fullscreen-bg');
-    const playerImage = document.getElementById('player-image');
-    const closeFullscreen = document.querySelector('.close-fullscreen');
-    const fullscreenCover = document.querySelector('.fullscreen-cover');
-    const fullscreenTitle = document.querySelector('.fullscreen-title');
-    const fullscreenArtist = document.querySelector('.fullscreen-artist');
-    const fullscreenAlbum = document.querySelector('.fullscreen-album');
-    const playPauseBtn = document.getElementById('play-pause-btn');
-    const progressBar = document.querySelector('.progress-bar');
-    const progress = document.querySelector('.progress');
-    const currentTimeSpan = document.querySelector('.current-time');
-    const totalTimeSpan = document.querySelector('.total-time');
-    
-    // When player image is clicked: open fullscreen, update cover, title, album and artist,
-    // and set the fullscreen background to the album cover with blur effect.
-    // Entferne diesen Event-Listener, da er später neu definiert wird
-    /*
-    playerImage.addEventListener('click', () => {
-      const coverSrc = playerImage.getAttribute('data-src') || playerImage.src;
-      fullscreenCover.src = coverSrc;
-      fullscreenTitle.textContent = document.getElementById('player-name').textContent;
-      // Here we assume that player-album contains "Album - Artist" and split by " - "
-      let albumArtist = document.getElementById('player-album').textContent;
-      let parts = albumArtist.split(' - ');
-      if(parts.length >= 2) {
-        fullscreenAlbum.textContent = parts[0];
-        fullscreenArtist.textContent = parts[1];
-      } else {
-        fullscreenAlbum.textContent = albumArtist;
-        fullscreenArtist.textContent = "";
-      }
-      // Set the blurred background to album cover
-      fullscreenBg.style.backgroundImage = "url('" + coverSrc + "')";
-      fullscreenPlayer.classList.add('active');
-      updatePlayPauseIcon();
-    });
-    */
-    
-    // Rest der originalen Fullscreen-Player Logik
-    closeFullscreen.addEventListener('click', () => {
-      fullscreenPlayer.classList.remove('active');
-      fullscreenBg.style.backgroundImage = "";
-    });
-    
-    playPauseBtn.addEventListener('click', togglePlay);
-    
-    function togglePlay() {
-      if (audio.paused) {
-        audio.play();
-        fullscreenPlayer.classList.add('playing');
-        playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
-      } else {
-        audio.pause();
-        fullscreenPlayer.classList.remove('playing');
-        playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
-      }
-    }
-    
-    function updatePlayPauseIcon() {
-      playPauseBtn.innerHTML = audio.paused ? 
-        '<i class="fas fa-play"></i>' : 
-        '<i class="fas fa-pause"></i>';
-    }
-    
-    // Forward and Backward Controls: skip 10 seconds
-    document.getElementById('prev-btn').addEventListener('click', () => {
-      audio.currentTime = Math.max(audio.currentTime - 10, 0);
-    });
-    document.getElementById('next-btn').addEventListener('click', () => {
-      if (audio.duration) {
-        audio.currentTime = Math.min(audio.currentTime + 10, audio.duration);
-      }
-    });
-    
-    audio.addEventListener('timeupdate', updateProgress);
-    progressBar.addEventListener('click', setProgress);
-    
-    function updateProgress() {
-      const percent = (audio.currentTime / audio.duration) * 100;
-      progress.style.width = percent + '%';
-      currentTimeSpan.textContent = formatTime(audio.currentTime);
-      totalTimeSpan.textContent = formatTime(audio.duration);
-    }
-    
-    function setProgress(e) {
-      const width = this.clientWidth;
-      const clickX = e.offsetX;
-      const duration = audio.duration;
-      audio.currentTime = (clickX / width) * duration;
-    }
-    
-    function formatTime(seconds) {
-      if (isNaN(seconds)) return '0:00';
-      const minutes = Math.floor(seconds / 60);
-      seconds = Math.floor(seconds % 60);
-      return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-    }
-    
-    audio.addEventListener('play', () => {
-      fullscreenPlayer.classList.add('playing');
-      updatePlayPauseIcon();
-    });
-    
-    audio.addEventListener('pause', () => {
-      fullscreenPlayer.classList.remove('playing');
-      updatePlayPauseIcon();
-    });
-    
-    // Modal Popup for Downloads Upgrade
-    var mpopup = document.getElementById('mpopupBox');
-    var mpLink = document.getElementById("mpopupLink");
-    var closeModal = document.getElementsByClassName("close")[0];
-    
-    mpLink.onclick = function() {
-      mpopup.style.display = "block";
-    };
-    
-    closeModal.onclick = function() {
-      mpopup.style.display = "none";
-    };
-    
-    window.onclick = function(event) {
-      if (event.target == mpopup) {
-        mpopup.style.display = "none";
-      }
-      if (event.target == fullscreenPlayer) {
-        fullscreenPlayer.classList.remove('active');
-      }
-    };
-    
-    // Button generation (unchanged)
-    const buttonTitles = ['2023','English Songs','Edward Maya','Zack Knight','Akcent','Arijit Singh','Enrique Iglesias','Pitbull','Imran Khan', 'DJ Snake', 'Darshan Raval', 'Jubin Nautiyal', 'Armaan Malik'];
-    const buttonContainer = document.querySelector('.button-container');
-    buttonTitles.forEach(title => {
-      const button = document.createElement('button');
-      button.classList.add('search-toggle');
-      button.textContent = title;
-      button.setAttribute('onclick', `doSaavnSearch('${title}')`);
-      buttonContainer.appendChild(button);
-    });
-    
-    // Search functions with loading animation (unchanged)
-    const originalSaavnSearch = window.SaavnSearch;
-    window.SaavnSearch = function() {
-      showLoader();
-      originalSaavnSearch();
-      setTimeout(hideLoader, 1500);
-    };
-    
-    const originalDoSaavnSearch = window.doSaavnSearch;
-    window.doSaavnSearch = function(query) {
-      showLoader();
-      originalDoSaavnSearch(query);
-      setTimeout(hideLoader, 1500);
-    };
-    
-    // Lazy Loading Implementation
-    document.addEventListener("DOMContentLoaded", function() {
-      // Überprüfe ob IntersectionObserver unterstützt wird
-      if ('IntersectionObserver' in window) {
-        const imageObserver = new IntersectionObserver((entries, observer) => {
-          entries.forEach(entry => {
-            if (entry.isIntersecting) {
-              const img = entry.target;
-              const src = img.getAttribute('data-src');
-              if (src) {
-                img.src = src;
-                img.onload = function() {
-                  img.classList.add('loaded');
-                  // Finde den Platzhalter, falls vorhanden
-                  const placeholder = img.parentNode.querySelector('.image-placeholder');
-                  if (placeholder) {
-                    placeholder.style.opacity = '0';
-                  }
-                };
-                observer.unobserve(img);
-              }
-            }
-          });
-        });
-
-        // Selektiere alle lazy-image Klassen
-        const lazyImages = document.querySelectorAll('.lazy-image');
-        lazyImages.forEach(img => {
-          imageObserver.observe(img);
-        });
-      } else {
-        // Fallback für Browser ohne IntersectionObserver
-        const lazyImages = document.querySelectorAll('.lazy-image');
-        lazyImages.forEach(img => {
-          img.src = img.getAttribute('data-src');
-          img.classList.add('loaded');
-        });
-      }
-    });
-
-    // Modifiziere die Albumcover-Erstellung für Suchergebnisse
-    const originalCreateSongContainer = window.createSongContainer;
-    if (typeof originalCreateSongContainer === 'function') {
-      window.createSongContainer = function(song) {
-        const container = originalCreateSongContainer(song);
-        
-        // Finde das Albumbild im Container und konvertiere es zu lazy loading
-        const img = container.querySelector('img');
-        if (img) {
-          // Erstelle einen Container für das Bild und den Platzhalter
-          const imageContainer = document.createElement('div');
-          imageContainer.className = 'image-container';
-          
-          // Erstelle den Platzhalter
-          const placeholder = document.createElement('div');
-          placeholder.className = 'image-placeholder';
-          placeholder.innerHTML = '<i class="fas fa-music" style="font-size: 24px; color: var(--primary-color);"></i>';
-          
-          // Bereite das Bild für lazy loading vor
-          const originalSrc = img.src;
-          img.setAttribute('data-src', originalSrc);
-          img.src = 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 1 1\'%3E%3C/svg%3E';
-          img.classList.add('lazy-image');
-          
-          // Organisiere die DOM-Struktur
-          img.parentNode.insertBefore(imageContainer, img);
-          imageContainer.appendChild(placeholder);
-          imageContainer.appendChild(img);
-        }
-        
-        return container;
-      };
-    }
-    
-    // Korrigierte Version des Player-Image-Klick Event-Listeners
-    playerImage.addEventListener('click', function() {
-      // Wir müssen sicherstellen, dass wir das tatsächliche Bild oder die data-src bekommen
-      let actualImageSrc;
-      
-      // Wenn das Bild bereits geladen wurde, verwende src, sonst data-src
-      if (playerImage.classList.contains('loaded')) {
-        actualImageSrc = playerImage.src;
-      } else {
-        actualImageSrc = playerImage.getAttribute('data-src');
-        // Sicherheitsmaßnahme: Lade das Bild sofort, wenn es noch nicht geladen wurde
-        playerImage.src = actualImageSrc;
-        playerImage.classList.add('loaded');
-        const placeholder = playerImage.parentNode.querySelector('.image-placeholder');
-        if (placeholder) {
-          placeholder.style.opacity = '0';
-        }
-      }
-      
-      // Jetzt setzen wir das Bild für den Fullscreen-Player
-      fullscreenCover.src = actualImageSrc;
-      fullscreenTitle.textContent = document.getElementById('player-name').textContent;
-      
-      // Here we assume that player-album contains "Album - Artist" and split by " - "
-      let albumArtist = document.getElementById('player-album').textContent;
-      let parts = albumArtist.split(' - ');
-      if(parts.length >= 2) {
-        fullscreenAlbum.textContent = parts[0];
-        fullscreenArtist.textContent = parts[1];
-      } else {
-        fullscreenAlbum.textContent = albumArtist;
-        fullscreenArtist.textContent = "";
-      }
-      
-      // Set the blurred background to album cover
-      fullscreenBg.style.backgroundImage = "url('" + actualImageSrc + "')";
-      fullscreenPlayer.classList.add('active');
-      updatePlayPauseIcon();
-    });
-    
-    // Hooks für dynamisch hinzugefügte Bilder
-    const originalPlaySong = window.playSong;
-    if (typeof originalPlaySong === 'function') {
-      window.playSong = function(e) {
-        originalPlaySong(e);
-        
-        // Stelle sicher, dass das Player-Image richtig geladen wird
-        setTimeout(function() {
-          const playerImg = document.getElementById('player-image');
-          if (playerImg && playerImg.getAttribute('data-src')) {
-            playerImg.src = playerImg.getAttribute('data-src');
-            playerImg.classList.add('loaded');
-            const placeholder = playerImg.parentNode.querySelector('.image-placeholder');
-            if (placeholder) {
-              placeholder.style.opacity = '0';
-            }
-          }
-        }, 100); // Kleine Verzögerung, um sicherzustellen, dass das Bild aktualisiert wurde
-      };
-    }
-    
-    // Beobachter für dynamisch hinzugefügte Bilder aktivieren
-    const refreshLazyImages = function() {
-      if ('IntersectionObserver' in window) {
-        const imageObserver = new IntersectionObserver((entries, observer) => {
-          entries.forEach(entry => {
-            if (entry.isIntersecting) {
-              const img = entry.target;
-              const src = img.getAttribute('data-src');
-              if (src) {
-                img.src = src;
-                img.onload = function() {
-                  img.classList.add('loaded');
-                  const placeholder = img.parentNode.querySelector('.image-placeholder');
-                  if (placeholder) {
-                    placeholder.style.opacity = '0';
-                  }
-                };
-                observer.unobserve(img);
-              }
-            }
-          });
-        });
-
-        const lazyImages = document.querySelectorAll('.lazy-image:not(.loaded)');
-        lazyImages.forEach(img => {
-          imageObserver.observe(img);
-        });
-      }
-    };
-    
-    // Nach Suche und beim Laden weiterer Ergebnisse Lazy Loading aktualisieren
-    document.addEventListener('DOMNodeInserted', function(e) {
-      if (e.target.classList && (
-          e.target.classList.contains('song-container') || 
-          e.target.querySelector && e.target.querySelector('.song-container'))) {
-        setTimeout(refreshLazyImages, 100);
-      }
-    });
-
-    // Neudefinition des Player-Image-Klick Event-Listeners mit debugging
-    document.addEventListener("DOMContentLoaded", function() {
-        const playerImg = document.getElementById('player-image');
-        
-        if (playerImg) {
-            console.log("Player image found, setting up click event");
-            playerImg.addEventListener('click', function() {
-                console.log("Player image clicked");
-                // Wir müssen sicherstellen, dass wir das tatsächliche Bild oder die data-src bekommen
-                let actualImageSrc;
-                
-                // Wenn das Bild bereits geladen wurde, verwende src, sonst data-src
-                if (playerImg.classList.contains('loaded')) {
-                    actualImageSrc = playerImg.src;
-                } else {
-                    actualImageSrc = playerImg.getAttribute('data-src');
-                    // Sicherheitsmaßnahme: Lade das Bild sofort, wenn es noch nicht geladen wurde
-                    playerImg.src = actualImageSrc;
-                    playerImg.classList.add('loaded');
-                    const placeholder = playerImg.parentNode.querySelector('.image-placeholder');
-                    if (placeholder) {
-                        placeholder.style.opacity = '0';
-                    }
-                }
-                
-                console.log("Image source:", actualImageSrc);
-                
-                // Jetzt setzen wir das Bild für den Fullscreen-Player
-                fullscreenCover.src = actualImageSrc;
-                fullscreenTitle.textContent = document.getElementById('player-name').textContent;
-                
-                // Here we assume that player-album contains "Album - Artist" and split by " - "
-                let albumArtist = document.getElementById('player-album').textContent;
-                let parts = albumArtist.split(' - ');
-                if(parts.length >= 2) {
-                    fullscreenAlbum.textContent = parts[0];
-                    fullscreenArtist.textContent = parts[1];
-                } else {
-                    fullscreenAlbum.textContent = albumArtist;
-                    fullscreenArtist.textContent = "";
-                }
-                
-                // Set the blurred background to album cover
-                fullscreenBg.style.backgroundImage = "url('" + actualImageSrc + "')";
-                fullscreenPlayer.classList.add('active');
-                updatePlayPauseIcon();
-                
-                console.log("Fullscreen player should be visible now");
-            });
-        } else {
-            console.error("Player image not found in DOM");
-        }
-    });
-    
-    // Füge Klick-Handler später dem Container hinzu (falls der direkte Click auf dem Image nicht funktioniert)
-    document.addEventListener("DOMContentLoaded", function() {
-        const playerImgContainer = document.querySelector('#player-image').parentNode;
-        
-        if (playerImgContainer) {
-            playerImgContainer.addEventListener('click', function() {
-                console.log("Player image container clicked");
-                const playerImg = document.getElementById('player-image');
-                let actualImageSrc;
-                
-                if (playerImg.classList.contains('loaded')) {
-                    actualImageSrc = playerImg.src;
-                } else {
-                    actualImageSrc = playerImg.getAttribute('data-src');
-                    playerImg.src = actualImageSrc;
-                    playerImg.classList.add('loaded');
-                }
-                
-                fullscreenCover.src = actualImageSrc;
-                fullscreenTitle.textContent = document.getElementById('player-name').textContent;
-                
-                let albumArtist = document.getElementById('player-album').textContent;
-                let parts = albumArtist.split(' - ');
-                if(parts.length >= 2) {
-                    fullscreenAlbum.textContent = parts[0];
-                    fullscreenArtist.textContent = parts[1];
-                } else {
-                    fullscreenAlbum.textContent = albumArtist;
-                    fullscreenArtist.textContent = "";
-                }
-                
-                fullscreenBg.style.backgroundImage = "url('" + actualImageSrc + "')";
-                fullscreenPlayer.classList.add('active');
-                updatePlayPauseIcon();
-            });
-        }
-    });
-    
-    // Entfernen des alten Click-Event-Listeners
-    // Hier wird der alte Listener ersetzt, damit er nicht doppelt ausgeführt wird
-    playerImage.removeEventListener('click', function() {
-        // Leer, wird nur verwendet, um den alten Listener zu ersetzen
-    });
-    
-    // Nach Suche und beim Laden weiterer Ergebnisse Lazy Loading aktualisieren
-    document.addEventListener('DOMNodeInserted', function(e) {
-        if (e.target.classList && (
-            e.target.classList.contains('song-container') || 
-            e.target.querySelector && e.target.querySelector('.song-container'))) {
-          setTimeout(refreshLazyImages, 100);
-        }
-    });
-    
-    // Überprüfen und Aktualisieren des Fullscreen-Players, wenn Audio geladen wird
-    audio.addEventListener('loadedmetadata', function() {
-        // Stelle sicher, dass der Vollbildplayer die korrekten Daten hat
-        const playerImg = document.getElementById('player-image');
-        if (playerImg) {
-            let actualImageSrc = playerImg.getAttribute('data-src') || playerImg.src;
-            fullscreenCover.src = actualImageSrc;
-            fullscreenTitle.textContent = document.getElementById('player-name').textContent;
-            
-            let albumArtist = document.getElementById('player-album').textContent;
-            let parts = albumArtist.split(' - ');
-            if(parts.length >= 2) {
-                fullscreenAlbum.textContent = parts[0];
-                fullscreenArtist.textContent = parts[1];
-            } else {
-                fullscreenAlbum.textContent = albumArtist;
-                fullscreenArtist.textContent = "";
-            }
-            
-            fullscreenBg.style.backgroundImage = "url('" + actualImageSrc + "')";
-        }
-    });
-  </script>
-  <script src="assets/js/app.js"></script>
+  <script src="./app.js"></script>
 </body>
 </html>
 <!-- partial -->
