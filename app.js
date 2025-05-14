@@ -408,7 +408,7 @@ async function doSaavnSearch(query, NotScroll, page) {
             document.getElementById("saavn-results").scrollIntoView({ behavior: 'smooth' });
         }
         
-        // Update search status
+        // Update search status with count
         updateSearchStatus(`${json.length} Ergebnisse gefunden`);
         
     } catch(error) {
