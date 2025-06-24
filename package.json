@@ -23,10 +23,13 @@
   "author": "JuliXBR4VO (upgraded by AI)",
   "license": "ISC",
   "dependencies": {
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "typescript": "^5.8.3",
     "vite": "^6.3.5"
   }
 }
