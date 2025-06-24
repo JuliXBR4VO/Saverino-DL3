@@ -1,0 +1,32 @@
+{
+  "name": "saverino-music-player",
+  "version": "2.0.0",
+  "description": "Modern music player with React, TypeScript, and Tailwind CSS - upgraded from the original Saverino",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
+    "test": "jest",
+    "test:watch": "jest --watch"
+  },
+  "keywords": [
+    "music",
+    "player",
+    "react",
+    "typescript",
+    "tailwind",
+    "saavn"
+  ],
+  "author": "JuliXBR4VO (upgraded by AI)",
+  "license": "ISC",
+  "dependencies": {
+    "@vitejs/plugin-react": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.20",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "vite": "^6.3.5"
+  }
+}
