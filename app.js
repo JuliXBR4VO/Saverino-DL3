@@ -1,748 +1,642 @@
-
-// Constants and Global Variables
+// Saverino Music Player - Enhanced JavaScript
+const API_BASE = "https://jiosaavn-api-privatecvc2.vercel.app";
 const DOWNLOAD_API = "https://openmp3compiler.astudy.org";
-const searchUrl = "https://jiosaavn-api-privatecvc2.vercel.app/search/songs?query=";
-var results_container = document.querySelector("#saavn-results");
-var results_objects = {};
-var page_index = 1;
-var lastSearch = '';  // Added lastSearch variable
-var searchHistory = [];
-var searchTimeout = null;
-var isSearching = false;
 
-// Initialize the app when DOM is loaded
-document.addEventListener('DOMContentLoaded', function() {
-    // Setup fullscreen player
-    setupFullscreenPlayer();
-    
-    // Setup search functionality
-    setupSearchBar();
-    
-    // Handle hash-based navigation
-    if(window.location.hash) {
-        doSaavnSearch(window.location.hash.substring(1));
-    } else {
-        doSaavnSearch('english', 1);
-    }
-    
-    // Listen for hash changes
-    addEventListener('hashchange', () => {
-        doSaavnSearch(window.location.hash.substring(1));
-    });
-    
-    // Bitrate change
-    $('#saavn-bitrate').on('change', () => {
-        doSaavnSearch(lastSearch);
-    });
-    
-    // Load more button
-    document.getElementById("loadmore").addEventListener('click', () => {
-        var query = document.querySelector("#saavn-search-box").value.trim();
-        if (!query) query = lastSearch;
-        query = encodeURIComponent(query);
-        doSaavnSearch(query, 0, true);
-    });
-    
-    // Modal popup for downloads
-    var mpopup = document.getElementById('mpopupBox');
-    var mpLink = document.getElementById("mpopupLink");
-    var closeModal = document.getElementsByClassName("close")[0];
-    
-    mpLink.onclick = function() {
-        mpopup.style.display = "block";
-    };
-    
-    closeModal.onclick = function() {
-        mpopup.style.display = "none";
-    };
-    
-    window.onclick = function(event) {
-        if (event.target == mpopup) {
-            mpopup.style.display = "none";
-        }
-    };
+// Global State
+const state = {
+  currentSong: null,
+  isPlaying: false,
+  searchResults: [],
+  downloads: [],
+  searchHistory: JSON.parse(localStorage.getItem('searchHistory') || '[]'),
+  currentQuality: '3',
+  page: 1,
+  lastQuery: '',
+  audioElement: null
+};
 
-    // Setup popular search terms
-    setupPopularSearchTerms();
+// DOM Elements
+let elements = {};
+
+// Initialize App
+document.addEventListener('DOMContentLoaded', () => {
+  initializeElements();
+  setupEventListeners();
+  loadInitialContent();
+  restoreState();
+  initializeDarkMode();
 });
 
-// Setup Search Bar Functionality
-function setupSearchBar() {
-    const searchBox = document.getElementById('saavn-search-box');
-    const clearButton = document.getElementById('clear-search');
-    const searchForm = document.querySelector('.search-form');
-    const searchStatus = document.getElementById('search-status');
-    
-    // Load search history from localStorage
-    loadSearchHistory();
-    
-    // Clear button functionality
-    clearButton.addEventListener('click', function() {
-        searchBox.value = '';
-        clearButton.classList.remove('visible');
-        searchBox.focus();
-    });
-    
-    // Show/hide clear button based on input
-    searchBox.addEventListener('input', function() {
-        if (searchBox.value.trim() !== '') {
-            clearButton.classList.add('visible');
-            
-            // Debounce search for better performance
-            if (searchTimeout) {
-                clearTimeout(searchTimeout);
-            }
-            
-            searchTimeout = setTimeout(() => {
-                if (searchBox.value.trim().length >= 2) {
-                    SaavnSearch();
-                }
-            }, 500);
-        } else {
-            clearButton.classList.remove('visible');
-        }
-    });
-    
-    // Focus search box when / is pressed
-    document.addEventListener('keydown', function(e) {
-        if (e.key === '/' && document.activeElement !== searchBox) {
-            e.preventDefault();
-            searchBox.focus();
-        }
-        
-        // Clear search and blur when Escape is pressed
-        if (e.key === 'Escape' && document.activeElement === searchBox) {
-            searchBox.value = '';
-            clearButton.classList.remove('visible');
-            searchBox.blur();
-        }
-    });
-    
-    // Form submission
-    searchForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        SaavnSearch();
-    });
-    
-    // Initial state of clear button
-    if (searchBox.value.trim() !== '') {
-        clearButton.classList.add('visible');
-    }
+// Initialize DOM Elements
+function initializeElements() {
+  elements = {
+    searchInput: document.getElementById('search-input'),
+    searchBtn: document.getElementById('search-btn'),
+    resultsGrid: document.getElementById('results-grid'),
+    loadMoreBtn: document.getElementById('load-more-btn'),
+    miniPlayer: document.getElementById('mini-player'),
+    fullscreenPlayer: document.getElementById('fullscreen-player'),
+    downloadPopup: document.getElementById('download-popup'),
+    downloadList: document.getElementById('download-list'),
+    downloadBadge: document.getElementById('download-badge'),
+    qualityBtns: document.querySelectorAll('.quality-btn'),
+    quickTags: document.querySelectorAll('.tag')
+  };
+  state.audioElement = document.getElementById('audio-player');
 }
 
-// Load search history from localStorage
-function loadSearchHistory() {
-    const savedHistory = localStorage.getItem('searchHistory');
-    if (savedHistory) {
-        searchHistory = JSON.parse(savedHistory);
-        updateSearchHistoryUI();
-    }
+// Setup Event Listeners
+function setupEventListeners() {
+  // Search
+  if (elements.searchBtn) {
+    elements.searchBtn.addEventListener('click', handleSearch);
+  }
+  if (elements.searchInput) {
+    elements.searchInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') handleSearch();
+    });
+  }
+
+  // Quality Selection
+  elements.qualityBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      elements.qualityBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.currentQuality = btn.dataset.quality;
+    });
+  });
+
+  // Quick Tags
+  elements.quickTags.forEach(tag => {
+    tag.addEventListener('click', () => {
+      elements.searchInput.value = tag.textContent.trim();
+      handleSearch();
+    });
+  });
+
+  // Load More
+  if (elements.loadMoreBtn) {
+    elements.loadMoreBtn.addEventListener('click', loadMore);
+  }
+
+  // Mini Player Controls
+  const miniPlayerImage = document.getElementById('mini-player-image');
+  const miniPlayBtn = document.getElementById('mini-play-btn');
+  const miniPrevBtn = document.getElementById('mini-prev-btn');
+  const miniNextBtn = document.getElementById('mini-next-btn');
+  
+  if (miniPlayerImage) miniPlayerImage.addEventListener('click', openFullscreenPlayer);
+  if (miniPlayBtn) miniPlayBtn.addEventListener('click', togglePlay);
+  if (miniPrevBtn) miniPrevBtn.addEventListener('click', playPrevious);
+  if (miniNextBtn) miniNextBtn.addEventListener('click', playNext);
+
+  // Fullscreen Player Controls
+  const closeFullscreenBtn = document.getElementById('close-fullscreen');
+  const fullscreenPlayBtn = document.getElementById('fullscreen-play-btn');
+  const fullscreenPrevBtn = document.getElementById('fullscreen-prev-btn');
+  const fullscreenNextBtn = document.getElementById('fullscreen-next-btn');
+  
+  if (closeFullscreenBtn) closeFullscreenBtn.addEventListener('click', closeFullscreenPlayer);
+  if (fullscreenPlayBtn) fullscreenPlayBtn.addEventListener('click', togglePlay);
+  if (fullscreenPrevBtn) fullscreenPrevBtn.addEventListener('click', playPrevious);
+  if (fullscreenNextBtn) fullscreenNextBtn.addEventListener('click', playNext);
+
+  // Progress Bars
+  const miniProgressBar = document.getElementById('mini-progress-bar');
+  const fullscreenProgressBar = document.getElementById('fullscreen-progress-bar');
+  
+  if (miniProgressBar) miniProgressBar.addEventListener('click', seekAudio);
+  if (fullscreenProgressBar) fullscreenProgressBar.addEventListener('click', seekAudio);
+
+  // Download Manager
+  const downloadFab = document.getElementById('download-fab');
+  const closeDownloadsBtn = document.getElementById('close-downloads');
+  
+  if (downloadFab) downloadFab.addEventListener('click', toggleDownloadPopup);
+  if (closeDownloadsBtn) closeDownloadsBtn.addEventListener('click', toggleDownloadPopup);
+
+  // Audio Element Events
+  if (state.audioElement) {
+    state.audioElement.addEventListener('timeupdate', updateProgress);
+    state.audioElement.addEventListener('ended', playNext);
+    state.audioElement.addEventListener('play', () => {
+      state.isPlaying = true;
+      updatePlayButtons();
+    });
+    state.audioElement.addEventListener('pause', () => {
+      state.isPlaying = false;
+      updatePlayButtons();
+    });
+  }
 }
 
-// Save search term to history
-function saveToSearchHistory(term) {
-    // Don't save empty or very short terms
-    if (!term || term.length < 2) return;
-    
-    // Remove if already exists (to move it to the top)
-    searchHistory = searchHistory.filter(item => item.toLowerCase() !== term.toLowerCase());
-    
-    // Add to the beginning
-    searchHistory.unshift(term);
-    
-    // Keep only the last 10 searches
-    if (searchHistory.length > 10) {
-        searchHistory = searchHistory.slice(0, 10);
-    }
-    
-    // Save to localStorage
-    localStorage.setItem('searchHistory', JSON.stringify(searchHistory));
-    
-    // Update UI
+// Load initial content
+function loadInitialContent() {
+  performSearch('Top Hits');
+}
+
+// Restore state
+function restoreState() {
+  if (state.searchHistory.length > 0) {
     updateSearchHistoryUI();
+  }
+  // Set default quality button active
+  elements.qualityBtns.forEach(btn => {
+    if (btn.dataset.quality === state.currentQuality) {
+      btn.classList.add('active');
+    }
+  });
+}
+
+// Handle Search
+function handleSearch() {
+  const query = elements.searchInput.value.trim();
+  if (!query) return;
+  state.page = 1;
+  performSearch(query);
+  saveToSearchHistory(query);
+}
+
+// Perform Search
+async function performSearch(query) {
+  state.lastQuery = query;
+  elements.resultsGrid.innerHTML = '<div class="loader"><div class="loader-dots"><div class="loader-dot"></div><div class="loader-dot"></div><div class="loader-dot"></div></div></div>';
+  
+  try {
+    const response = await fetch(`${API_BASE}/search/songs?query=${encodeURIComponent(query)}&limit=40&page=${state.page}`);
+    if (!response.ok) throw new Error('Search failed');
+    
+    const data = await response.json();
+    if (!data.data || !data.data.results || data.data.results.length === 0) {
+      elements.resultsGrid.innerHTML = '<p class="error-message">No results found. Try another search term.</p>';
+      return;
+    }
+    
+    if (state.page === 1) {
+      state.searchResults = data.data.results;
+    } else {
+      state.searchResults = state.searchResults.concat(data.data.results);
+    }
+    
+    renderSearchResults();
+  } catch (error) {
+    elements.resultsGrid.innerHTML = '<p class="error-message">Failed to search. Please try again.</p>';
+    console.error('Search error:', error);
+  }
+}
+
+// Render search results
+function renderSearchResults() {
+  elements.resultsGrid.innerHTML = '';
+  state.searchResults.forEach(track => {
+    const card = createSongCard(track);
+    elements.resultsGrid.appendChild(card);
+  });
+  
+  if (elements.loadMoreBtn) {
+    elements.loadMoreBtn.style.display = state.searchResults.length >= 40 ? 'inline-flex' : 'none';
+  }
+}
+
+// Create song card
+function createSongCard(track) {
+  const card = document.createElement('div');
+  card.className = 'song-card';
+  
+  const imageUrl = track.image && track.image[1] ? track.image[1].link : '';
+  const downloadUrl = track.downloadUrl && track.downloadUrl[state.currentQuality] ? track.downloadUrl[state.currentQuality].link : '';
+  
+  card.innerHTML = `
+    <div class="song-image-wrapper">
+      <img src="${imageUrl}" alt="${track.name}" class="song-image" loading="lazy" />
+      <div class="song-overlay">
+        <button class="play-btn" aria-label="Play" data-url="${downloadUrl}" data-id="${track.id}">
+          <i class="fas fa-play"></i>
+        </button>
+        <button class="download-btn" aria-label="Download" data-id="${track.id}">
+          <i class="fas fa-download"></i>
+        </button>
+      </div>
+    </div>
+    <div class="song-info">
+      <div class="song-title">${track.name || 'Unknown'}</div>
+      <div class="song-artist">${track.primaryArtists || 'Unknown Artist'}</div>
+      <div class="song-meta">
+        <span>${track.year || ''}</span>
+        <span>${formatDuration(track.duration)}</span>
+      </div>
+    </div>
+  `;
+  
+  // Add event listeners
+  const playBtn = card.querySelector('.play-btn');
+  const downloadBtn = card.querySelector('.download-btn');
+  
+  playBtn.addEventListener('click', () => playSong(downloadUrl, track.id));
+  downloadBtn.addEventListener('click', () => addToDownload(track.id));
+  
+  return card;
+}
+
+// Format duration
+function formatDuration(seconds) {
+  if (!seconds) return '0:00';
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+// Play song
+function playSong(url, id) {
+  if (!url) return;
+  
+  state.currentSong = id;
+  state.audioElement.src = url;
+  state.audioElement.play();
+  
+  updateMiniPlayer();
+  updateFullscreenPlayer();
+  
+  if (elements.miniPlayer) {
+    elements.miniPlayer.classList.add('active');
+  }
+}
+
+// Update mini player
+function updateMiniPlayer() {
+  if (!state.currentSong) return;
+  
+  const track = state.searchResults.find(t => t.id === state.currentSong);
+  if (!track) return;
+  
+  const miniImage = document.getElementById('mini-player-image');
+  const miniTitle = document.getElementById('mini-player-title');
+  const miniArtist = document.getElementById('mini-player-artist');
+  
+  if (miniImage) miniImage.src = track.image[1].link;
+  if (miniTitle) miniTitle.textContent = track.name;
+  if (miniArtist) miniArtist.textContent = track.primaryArtists;
+}
+
+// Update fullscreen player
+function updateFullscreenPlayer() {
+  if (!state.currentSong) return;
+  
+  const track = state.searchResults.find(t => t.id === state.currentSong);
+  if (!track) return;
+  
+  const fullscreenCover = document.getElementById('fullscreen-cover');
+  const fullscreenTitle = document.getElementById('fullscreen-title');
+  const fullscreenArtist = document.getElementById('fullscreen-artist');
+  const fullscreenAlbum = document.getElementById('fullscreen-album');
+  
+  if (fullscreenCover) fullscreenCover.src = track.image[1].link;
+  if (fullscreenTitle) fullscreenTitle.textContent = track.name;
+  if (fullscreenArtist) fullscreenArtist.textContent = track.primaryArtists;
+  if (fullscreenAlbum) fullscreenAlbum.textContent = track.album ? track.album.name : '';
+}
+
+// Toggle play/pause
+function togglePlay() {
+  if (!state.audioElement.src) return;
+  
+  if (state.audioElement.paused) {
+    state.audioElement.play();
+  } else {
+    state.audioElement.pause();
+  }
+}
+
+// Update play buttons
+function updatePlayButtons() {
+  const playIcon = state.isPlaying ? 'fa-pause' : 'fa-play';
+  
+  const miniPlayBtn = document.getElementById('mini-play-btn');
+  const fullscreenPlayBtn = document.getElementById('fullscreen-play-btn');
+  
+  if (miniPlayBtn) miniPlayBtn.innerHTML = `<i class="fas ${playIcon}"></i>`;
+  if (fullscreenPlayBtn) fullscreenPlayBtn.innerHTML = `<i class="fas ${playIcon}"></i>`;
+  
+  // Update fullscreen player state
+  if (state.isPlaying) {
+    elements.fullscreenPlayer.classList.add('playing');
+  } else {
+    elements.fullscreenPlayer.classList.remove('playing');
+  }
+}
+
+// Play previous
+function playPrevious() {
+  if (!state.currentSong) return;
+  
+  const index = state.searchResults.findIndex(t => t.id === state.currentSong);
+  if (index > 0) {
+    const prevTrack = state.searchResults[index - 1];
+    const url = prevTrack.downloadUrl[state.currentQuality].link;
+    playSong(url, prevTrack.id);
+  }
+}
+
+// Play next
+function playNext() {
+  if (!state.currentSong) return;
+  
+  const index = state.searchResults.findIndex(t => t.id === state.currentSong);
+  if (index < state.searchResults.length - 1) {
+    const nextTrack = state.searchResults[index + 1];
+    const url = nextTrack.downloadUrl[state.currentQuality].link;
+    playSong(url, nextTrack.id);
+  }
+}
+
+// Update progress
+function updateProgress() {
+  const currentTime = state.audioElement.currentTime;
+  const duration = state.audioElement.duration;
+  
+  if (!duration) return;
+  
+  const percent = (currentTime / duration) * 100;
+  
+  const miniProgressFill = document.getElementById('mini-progress-fill');
+  const fullscreenProgressFill = document.getElementById('fullscreen-progress-fill');
+  const miniCurrentTime = document.getElementById('mini-current-time');
+  const miniTotalTime = document.getElementById('mini-total-time');
+  const fullscreenCurrentTime = document.getElementById('fullscreen-current-time');
+  const fullscreenTotalTime = document.getElementById('fullscreen-total-time');
+  
+  if (miniProgressFill) miniProgressFill.style.width = `${percent}%`;
+  if (fullscreenProgressFill) fullscreenProgressFill.style.width = `${percent}%`;
+  if (miniCurrentTime) miniCurrentTime.textContent = formatDuration(Math.floor(currentTime));
+  if (miniTotalTime) miniTotalTime.textContent = formatDuration(Math.floor(duration));
+  if (fullscreenCurrentTime) fullscreenCurrentTime.textContent = formatDuration(Math.floor(currentTime));
+  if (fullscreenTotalTime) fullscreenTotalTime.textContent = formatDuration(Math.floor(duration));
+}
+
+// Seek audio
+function seekAudio(event) {
+  const progressBar = event.currentTarget;
+  const rect = progressBar.getBoundingClientRect();
+  const clickX = event.clientX - rect.left;
+  const width = rect.width;
+  const percent = clickX / width;
+  
+  if (state.audioElement.duration) {
+    state.audioElement.currentTime = percent * state.audioElement.duration;
+  }
+}
+
+// Open fullscreen player
+function openFullscreenPlayer() {
+  if (!state.currentSong) return;
+  updateFullscreenPlayer();
+  elements.fullscreenPlayer.classList.add('active');
+}
+
+// Close fullscreen player
+function closeFullscreenPlayer() {
+  elements.fullscreenPlayer.classList.remove('active');
+}
+
+// Add to download
+function addToDownload(id) {
+  const track = state.searchResults.find(t => t.id === id);
+  if (!track) return;
+  
+  if (state.downloads.find(d => d.id === id)) {
+    showMessage('Already in download list', 'error');
+    return;
+  }
+  
+  state.downloads.push({ id, status: 'Pending', track });
+  updateDownloadBadge();
+  renderDownloadList();
+  startDownload(id);
+  showMessage('Added to downloads', 'success');
+}
+
+// Update download badge
+function updateDownloadBadge() {
+  const count = state.downloads.length;
+  const downloadManager = document.querySelector('.download-manager');
+  
+  // Show/hide download manager based on whether there are any downloads
+  if (downloadManager) {
+    if (count > 0) {
+      downloadManager.classList.add('has-downloads');
+    } else {
+      downloadManager.classList.remove('has-downloads');
+    }
+  }
+  
+  // Update badge count
+  if (elements.downloadBadge) {
+    if (count > 0) {
+      elements.downloadBadge.textContent = count;
+      elements.downloadBadge.style.display = 'flex';
+    } else {
+      elements.downloadBadge.style.display = 'none';
+    }
+  }
+}
+
+// Render download list
+function renderDownloadList() {
+  if (!elements.downloadList) return;
+  
+  elements.downloadList.innerHTML = '';
+  state.downloads.forEach(download => {
+    const item = document.createElement('div');
+    item.className = 'download-item';
+    
+    const imageUrl = download.track.image && download.track.image[1] ? download.track.image[1].link : '';
+    
+    item.innerHTML = `
+      <img src="${imageUrl}" alt="${download.track.name}" class="download-item-image" />
+      <div class="download-item-info">
+        <div class="download-item-title">${download.track.name}</div>
+        <div class="download-item-artist">${download.track.primaryArtists}</div>
+      </div>
+      <div class="download-status ${download.status.toLowerCase()}">${download.status}</div>
+    `;
+    
+    elements.downloadList.appendChild(item);
+  });
+}
+
+// Start download
+async function startDownload(id) {
+  try {
+    const response = await fetch(`${DOWNLOAD_API}/add?id=${id}`);
+    const data = await response.json();
+    
+    const download = state.downloads.find(d => d.id === id);
+    if (!download) return;
+    
+    if (data.status === 'success') {
+      download.status = 'Downloading';
+      renderDownloadList();
+      pollDownloadStatus(id);
+    } else {
+      download.status = 'Error';
+      renderDownloadList();
+    }
+  } catch (error) {
+    const download = state.downloads.find(d => d.id === id);
+    if (download) {
+      download.status = 'Error';
+      renderDownloadList();
+    }
+  }
+}
+
+// Poll download status
+function pollDownloadStatus(id) {
+  const interval = setInterval(async () => {
+    try {
+      const response = await fetch(`${DOWNLOAD_API}/status?id=${id}`);
+      const data = await response.json();
+      
+      const download = state.downloads.find(d => d.id === id);
+      if (!download) {
+        clearInterval(interval);
+        return;
+      }
+      
+      if (data.status) {
+        download.status = data.status;
+        renderDownloadList();
+        
+        if (data.status === 'Done') {
+          clearInterval(interval);
+          download.url = data.url;
+          showMessage('Download completed!', 'success');
+        }
+      }
+    } catch (error) {
+      clearInterval(interval);
+    }
+  }, 3000);
+}
+
+// Toggle download popup
+function toggleDownloadPopup() {
+  if (elements.downloadPopup) {
+    elements.downloadPopup.classList.toggle('active');
+  }
+}
+
+// Load more
+function loadMore() {
+  state.page++;
+  performSearch(state.lastQuery);
+}
+
+// Save to search history
+function saveToSearchHistory(term) {
+  if (!term || term.length < 2) return;
+  
+  state.searchHistory = state.searchHistory.filter(t => t.toLowerCase() !== term.toLowerCase());
+  state.searchHistory.unshift(term);
+  
+  if (state.searchHistory.length > 10) {
+    state.searchHistory = state.searchHistory.slice(0, 10);
+  }
+  
+  localStorage.setItem('searchHistory', JSON.stringify(state.searchHistory));
+  updateSearchHistoryUI();
 }
 
 // Update search history UI
 function updateSearchHistoryUI() {
-    const historyContainer = document.getElementById('search-history');
-    
-    if (searchHistory.length === 0) {
-        historyContainer.classList.remove('visible');
-        return;
+  // This can be implemented if you want to show search history in the UI
+}
+
+// Show message
+function showMessage(message, type = 'info') {
+  const messageEl = document.createElement('div');
+  messageEl.className = `${type}-message slide-up`;
+  messageEl.textContent = message;
+  
+  document.body.appendChild(messageEl);
+  
+  setTimeout(() => {
+    messageEl.remove();
+  }, 3000);
+}
+
+// Dark Mode Functions
+function initializeDarkMode() {
+  const themeToggle = document.getElementById('theme-toggle');
+  const savedTheme = localStorage.getItem('theme') || 'light';
+  
+  // Apply saved theme
+  document.documentElement.setAttribute('data-theme', savedTheme);
+  updateThemeIcon(savedTheme);
+  
+  // Toggle theme on button click
+  if (themeToggle) {
+    themeToggle.addEventListener('click', () => {
+      const currentTheme = document.documentElement.getAttribute('data-theme');
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      
+      document.documentElement.setAttribute('data-theme', newTheme);
+      localStorage.setItem('theme', newTheme);
+      updateThemeIcon(newTheme);
+    });
+  }
+}
+
+function updateThemeIcon(theme) {
+  const themeToggle = document.getElementById('theme-toggle');
+  if (themeToggle) {
+    const icon = themeToggle.querySelector('i');
+    if (icon) {
+      icon.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
     }
-    
-    historyContainer.classList.add('visible');
-    
-    let html = `
-        <div class="search-history-title">
-            <i class="fas fa-history"></i> Letzte Suchen
-        </div>
-        <ul class="search-history-list">
-    `;
-    
-    searchHistory.forEach(term => {
-        html += `
-            <li class="search-history-item" onclick="searchFromHistory('${term}')">
-                <i class="fas fa-search"></i> ${term}
-            </li>
-        `;
+  }
+}
+
+// Improved mobile touch handling
+function addMobileTouchHandlers() {
+  // Add touch feedback to buttons
+  const buttons = document.querySelectorAll('button');
+  buttons.forEach(button => {
+    button.addEventListener('touchstart', () => {
+      button.style.transform = 'scale(0.95)';
     });
-    
-    html += `</ul>`;
-    historyContainer.innerHTML = html;
-}
-
-// Search from history item
-function searchFromHistory(term) {
-    document.getElementById('saavn-search-box').value = term;
-    document.getElementById('clear-search').classList.add('visible');
-    SaavnSearch();
-}
-
-// Setup popular search terms
-function setupPopularSearchTerms() {
-    const popularTerms = [
-        { icon: 'fa-fire', text: 'Top Hits' },
-        { icon: 'fa-guitar', text: 'Rock' },
-        { icon: 'fa-compact-disc', text: 'Pop' },
-        { icon: 'fa-drum', text: 'Hip Hop' },
-        { icon: 'fa-music', text: 'Jazz' },
-        { icon: 'fa-heart', text: 'Balladen' },
-        { icon: 'fa-globe', text: 'Weltmusik' },
-        { icon: 'fa-microphone', text: 'Deutsch' }
-    ];
-    
-    const container = document.querySelector('.search-toggle-container');
-    let html = '';
-    
-    popularTerms.forEach(term => {
-        html += `
-            <button class="search-toggle" onclick="searchFromHistory('${term.text}')">
-                <i class="fas ${term.icon}"></i> ${term.text}
-            </button>
-        `;
+    button.addEventListener('touchend', () => {
+      button.style.transform = '';
     });
+  });
+  
+  // Improve swipe gestures for fullscreen player
+  let touchStartX = 0;
+  let touchStartY = 0;
+  
+  elements.fullscreenPlayer.addEventListener('touchstart', (e) => {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+  });
+  
+  elements.fullscreenPlayer.addEventListener('touchend', (e) => {
+    const touchEndX = e.changedTouches[0].clientX;
+    const touchEndY = e.changedTouches[0].clientY;
+    const diffX = touchEndX - touchStartX;
+    const diffY = touchEndY - touchStartY;
     
-    container.innerHTML = html;
-}
-
-// Audio Player Functions
-function PlayAudio(audio_url, song_id) {
-    var audio = document.getElementById('player');
-    var source = document.getElementById('audioSource');
-    source.src = audio_url;
-    var name = document.getElementById(song_id+"-n").textContent;
-    var album = document.getElementById(song_id+"-a").textContent;
-    var artist = document.getElementById(song_id+"-ar").textContent;
-    var image = document.getElementById(song_id+"-i").getAttribute("data-src") || document.getElementById(song_id+"-i").getAttribute("src");
-    
-    document.title = name+" - "+album;
-    var bitrate = document.getElementById('saavn-bitrate');
-    var bitrate_i = bitrate.options[bitrate.selectedIndex].value;
-    var quality = bitrate_i == 4 ? 320 : 160;
-
-    // Update mini player
-    document.getElementById("player-name").innerHTML = name;
-    document.getElementById("player-album").innerHTML = album + " - " + artist;
-    
-    // Handle player image with lazy loading
-    var playerImage = document.getElementById("player-image");
-    playerImage.setAttribute("data-src", image);
-    playerImage.src = image;
-    playerImage.classList.add("loaded");
-    var placeholder = playerImage.parentNode.querySelector('.image-placeholder');
-    if (placeholder) {
-        placeholder.style.opacity = '0';
+    // Swipe down to close fullscreen player
+    if (Math.abs(diffY) > Math.abs(diffX) && diffY > 50) {
+      closeFullscreenPlayer();
     }
-
-    // Update fullscreen player
-    var fullscreenCover = document.querySelector(".fullscreen-cover");
-    var fullscreenTitle = document.querySelector(".fullscreen-title");
-    var fullscreenArtist = document.querySelector(".fullscreen-artist");
-    var fullscreenAlbum = document.querySelector(".fullscreen-album");
-    var fullscreenBg = document.querySelector(".fullscreen-bg");
-    
-    if (fullscreenCover) {
-        fullscreenCover.src = image;
-        fullscreenTitle.textContent = name;
-        fullscreenArtist.textContent = artist;
-        fullscreenAlbum.textContent = album;
-        fullscreenBg.style.backgroundImage = "url('" + image + "')";
-    }
-
-    var promise = audio.load();
-    if (promise) {
-        promise.catch(function(error) { console.error(error); });
-    }
-    audio.play();
+  });
 }
 
-// Search Functions
-function SaavnSearch() {
-    event.preventDefault();
-    var query = document.querySelector("#saavn-search-box").value.trim();
-    
-    if (!query) return;
-    
-    query = encodeURIComponent(query);
-    
-    // Save to search history
-    saveToSearchHistory(decodeURIComponent(query));
-    
-    // Update search status
-    updateSearchStatus('Suche läuft...');
-    
-    // Show loader
-    showSearchingState(true);
-    
-    doSaavnSearch(query);
+// Initialize mobile handlers
+if ('ontouchstart' in window) {
+  document.addEventListener('DOMContentLoaded', addMobileTouchHandlers);
 }
 
-function searchSong(search_term) {
-    document.getElementById('saavn-search-box').value = search_term;
-    document.getElementById("saavn-search-trigger").click();
-}
-
-async function doSaavnSearch(query, NotScroll, page) {
-    window.location.hash = query;
-    document.querySelector("#saavn-search-box").value = decodeURIComponent(query);
-    if(!query) return 0;
-
-    // Set searching state
-    isSearching = true;
-    showSearchingState(true);
-    
-    results_container.innerHTML = '<div class="loader">Suche läuft...</div>';
-    query = query + "&limit=40";
-    
-    if(page) {
-        page_index = page_index + 1;
-        query = query + "&page=" + page_index;
-    } else {
-        query = query + "&page=1";
-        page_index = 1;
-    }
-    
-    try {
-        var response = await fetch(searchUrl + query);
-        var json = await response.json();
-        
-        if (response.status !== 200) {
-            results_container.innerHTML = `<div class="no-results">
-                <i class="fas fa-exclamation-circle"></i>
-                <h4>Fehler bei der Suche</h4>
-                <p>${json.message || 'Ein unbekannter Fehler ist aufgetreten.'}</p>
-            </div>`;
-            console.log(response);
-            updateSearchStatus('Fehler bei der Suche');
-            showSearchingState(false);
-            return 0;
-        }
-
-        var json = json.data.results;
-        if(!json || json.length === 0) {
-            results_container.innerHTML = `<div class="no-results">
-                <i class="fas fa-search"></i>
-                <h4>Keine Ergebnisse gefunden</h4>
-                <p>Versuche es mit anderen Suchbegriffen oder wähle eine der Vorschläge unten.</p>
-                <div class="suggestions">
-                    <button class="suggestion-btn" onclick="searchFromHistory('Top Hits')">Top Hits</button>
-                    <button class="suggestion-btn" onclick="searchFromHistory('Pop')">Pop</button>
-                    <button class="suggestion-btn" onclick="searchFromHistory('Rock')">Rock</button>
-                    <button class="suggestion-btn" onclick="searchFromHistory('Hip Hop')">Hip Hop</button>
-                </div>
-            </div>`;
-            updateSearchStatus('Keine Ergebnisse gefunden');
-            showSearchingState(false);
-            return;
-        }
-
-        lastSearch = decodeURI(window.location.hash.substring(1));
-        var results = [];
-
-        for(let track of json) {
-            song_name = TextAbstract(track.name, 25);
-            album_name = TextAbstract(track.album.name, 20);
-            if (track.album.name == track.name) album_name = "";
-            
-            var measuredTime = new Date(null);
-            measuredTime.setSeconds(track.duration);
-            var play_time = measuredTime.toISOString().substr(11, 8);
-            if (play_time.startsWith("00:0")) play_time = play_time.slice(4);
-            if (play_time.startsWith("00:")) play_time = play_time.slice(3);
-            
-            var song_id = track.id;
-            var year = track.year;
-            var song_image = track.image[1].link;
-            var song_artist = TextAbstract(track.primaryArtists, 30);
-            var bitrate = document.getElementById('saavn-bitrate');
-            var bitrate_i = bitrate.options[bitrate.selectedIndex].value;
-            
-            if(track.downloadUrl) {
-                var download_url = track.downloadUrl[bitrate_i]['link'];
-                results_objects[song_id] = { track: track };
-                
-                results.push(generateSongCard(song_id, song_name, song_artist, album_name, year, play_time, song_image, download_url));
-            }
-        }
-        
-        results_container.innerHTML = results.join(' ');
-        
-        // Force load all images after adding them to DOM
-        const allImages = document.querySelectorAll('.lazy-image');
-        allImages.forEach(img => {
-            const src = img.getAttribute('data-src');
-            if (src) {
-                img.src = src;
-                img.onload = function() {
-                    img.classList.add('loaded');
-                    const placeholder = img.parentNode.querySelector('.image-placeholder');
-                    if (placeholder) {
-                        placeholder.style.opacity = '0';
-                    }
-                };
-            }
-        });
-        
-        if(!NotScroll) {
-            document.getElementById("saavn-results").scrollIntoView({ behavior: 'smooth' });
-        }
-        
-        // Update search status with count
-        updateSearchStatus(`${json.length} Ergebnisse gefunden`);
-        
-    } catch(error) {
-        results_container.innerHTML = `<div class="no-results">
-            <i class="fas fa-exclamation-triangle"></i>
-            <h4>Fehler bei der Suche</h4>
-            <p>${error} <br> Bitte überprüfe deine Internetverbindung oder versuche es später erneut.</p>
-        </div>`;
-        updateSearchStatus('Fehler bei der Suche');
-    } finally {
-        // Reset searching state
-        isSearching = false;
-        showSearchingState(false);
-    }
-}
-
-// Update search status
-function updateSearchStatus(message) {
-    const statusElement = document.getElementById('search-status');
-    if (statusElement) {
-        statusElement.textContent = message;
-        
-        // Setze die Farbe basierend auf der Nachricht
-        if (message.includes('Ergebnisse gefunden')) {
-            statusElement.style.color = 'var(--primary-color)';
-        } else if (message.includes('Fehler')) {
-            statusElement.style.color = '#ff5555';
-        } else if (message.includes('Suche läuft')) {
-            statusElement.style.color = 'var(--text-secondary)';
-        } else if (message.includes('Keine Ergebnisse')) {
-            statusElement.style.color = '#ff9955';
-        }
-    }
-}
-
-// Show searching state
-function showSearchingState(isSearching) {
-    const searchIcon = document.querySelector('.search-icon i');
-    const searchButton = document.getElementById('saavn-search-trigger');
-    
-    if (isSearching) {
-        searchIcon.classList.add('searching');
-        searchButton.disabled = true;
-    } else {
-        searchIcon.classList.remove('searching');
-        searchButton.disabled = false;
-    }
-}
-
-// Download Functions
-function AddDownload(id) {
-    var bitrate = document.getElementById('saavn-bitrate');
-    var bitrate_i = bitrate.options[bitrate.selectedIndex].value;
-    var MP3DL = DOWNLOAD_API+"/add?id="+id;
-    
-    fetch(MP3DL)
-        .then(response => response.json())
-        .then(data => {
-            if (data.status == "success") {
-                addToDownloadList(id, data);
-                updateDownloadStatus(id);
-            }
-        });
-}
-
-// Helper Functions
-function TextAbstract(text, length) {
-    if (!text) return "";
-    if (text.length <= length) return text;
-    
-    text = text.substring(0, length);
-    return text.substring(0, text.lastIndexOf(" ")) + "...";
-}
-
-function generateSongCard(id, name, artist, album, year, duration, image, downloadUrl) {
-    return `
-        <div class="song-card" data-song-id="${id}">
-            <div class="song-image-container">
-                <div class="image-placeholder">
-                    <i class="fas fa-music"></i>
-                </div>
-                <img class="lazy-image song-cover" id="${id}-i" 
-                     data-src="${image}" 
-                     src="${image}"
-                     alt="${name}">
-                <div class="song-overlay">
-                    <button class="play-btn" onclick='PlayAudio("${downloadUrl}","${id}")' aria-label="Abspielen">
-                        <i class="fas fa-play"></i>
-                    </button>
-                    <button class="download-btn" onclick='AddDownload("${id}")' aria-label="Herunterladen">
-                        <i class="fas fa-download"></i>
-                    </button>
-                </div>
-            </div>
-            <div class="song-info">
-                <h3 class="song-name" id="${id}-n">${name}</h3>
-                <p class="song-artist" id="${id}-ar">${artist}</p>
-                <p class="song-album" id="${id}-a">${album}</p>
-                <div class="song-meta">
-                    <span class="song-year">${year}</span>
-                    <span class="song-duration">${duration}</span>
-                </div>
-            </div>
-        </div>
-    `;
-}
-
-function addToDownloadList(id, data) {
-    var download_list = document.getElementById("download-list");
-    var download_item = document.createElement("li");
-    
-    download_item.innerHTML = `
-        <div class="col">
-            <img class="track-img" src="${data.image}" width="50px">
-            <div style="display: inline;">
-                <span class="track-name">${results_objects[id].track.name}</span> - 
-                <span class="track-album">${results_objects[id].track.album.name}</span>
-                <br>
-                <span class="track-size">Size: Null</span>
-                <span class="track-status" style="color:green">${data.status}</span>
-            </div>
-        </div>
-        <hr>
-    `;
-    
-    download_item.setAttribute("track_tag", id);
-    download_item.className = "no-bullets";
-    download_list.appendChild(download_item);
-    
-    // Visual feedback on download button
-    var float_tap = document.getElementById('mpopupLink');
-    float_tap.style.backgroundColor = "green";
-    float_tap.style.borderColor = "green";
-    setTimeout(() => {
-        float_tap.style.backgroundColor = "#007bff";
-        float_tap.style.borderColor = "#007bff";
-    }, 1000);
-    
-    // Show download popup
-    document.getElementById('mpopupBox').style.display = "block";
-}
-
-function updateDownloadStatus(id) {
-    var STATUS_URL = DOWNLOAD_API+"/status?id="+id;
-    var download_status_span = document.querySelector(`[track_tag="${id}"] .track-status`);
-    var download_size = document.querySelector(`[track_tag="${id}"] .track-size`);
-    
-    var interval = setInterval(() => {
-        fetch(STATUS_URL)
-            .then(response => response.json())
-            .then(data => {
-                if (data.status) {
-                    download_status_span.textContent = data.status;
-                    if(data.size) {
-                        download_size.textContent = "Size: "+data.size;
-                    }
-                    if (data.status == "Done") {
-                        download_status_span.innerHTML = `<a href="${DOWNLOAD_API}${data.url}" target="_blank">Download MP3</a>`;
-                        clearInterval(interval);
-                    }
-                }
-            });
-    }, 3000);
-}
-
-// Enhanced Fullscreen Player Functions
-function setupFullscreenPlayer() {
-    const audio = document.getElementById('player');
-    const fullscreenPlayer = document.querySelector('.fullscreen-player');
-    const playerImage = document.getElementById('player-image');
-    const imageContainer = playerImage.parentNode;
-    const closeFullscreen = document.querySelector('.close-fullscreen');
-    const playPauseBtn = document.getElementById('play-pause-btn');
-    const progressBar = document.querySelector('.progress-bar');
-    const progress = document.querySelector('.progress');
-    
-    // Ensure player image click works properly
-    imageContainer.addEventListener('click', function() {
-        openFullscreenPlayer();
-    });
-    
-    // Close fullscreen player
-    closeFullscreen.addEventListener('click', function() {
-        fullscreenPlayer.classList.remove('active');
-        setTimeout(() => {
-            fullscreenPlayer.style.display = 'none';
-        }, 400); // Match the animation duration
-    });
-    
-    // Play/Pause button
-    playPauseBtn.addEventListener('click', function() {
-        togglePlay();
-    });
-    
-    // Progress bar click
-    progressBar.addEventListener('click', function(e) {
-        const width = this.clientWidth;
-        const clickX = e.offsetX;
-        const duration = audio.duration;
-        audio.currentTime = (clickX / width) * duration;
-    });
-    
-    // Update progress
-    audio.addEventListener('timeupdate', function() {
-        updateProgress();
-    });
-    
-    // Update play/pause icon when audio state changes
-    audio.addEventListener('play', function() {
-        fullscreenPlayer.classList.add('playing');
-        playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
-    });
-    
-    audio.addEventListener('pause', function() {
-        fullscreenPlayer.classList.remove('playing');
-        playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
-    });
-    
-    // Forward and Backward Controls
-    document.getElementById('prev-btn').addEventListener('click', function() {
-        audio.currentTime = Math.max(audio.currentTime - 10, 0);
-    });
-    
-    document.getElementById('next-btn').addEventListener('click', function() {
-        if (audio.duration) {
-            audio.currentTime = Math.min(audio.currentTime + 10, audio.duration);
-        }
-    });
-    
-    // Keyboard controls for fullscreen player
-    document.addEventListener('keydown', function(e) {
-        if (fullscreenPlayer.classList.contains('active')) {
-            if (e.key === ' ' || e.key === 'k') {
-                e.preventDefault();
-                togglePlay();
-            } else if (e.key === 'ArrowLeft' || e.key === 'j') {
-                audio.currentTime = Math.max(audio.currentTime - 10, 0);
-            } else if (e.key === 'ArrowRight' || e.key === 'l') {
-                if (audio.duration) {
-                    audio.currentTime = Math.min(audio.currentTime + 10, audio.duration);
-                }
-            } else if (e.key === 'Escape') {
-                closeFullscreen.click();
-            }
-        }
-    });
-}
-
-function openFullscreenPlayer() {
-    const audio = document.getElementById('player');
-    const fullscreenPlayer = document.querySelector('.fullscreen-player');
-    const playerImage = document.getElementById('player-image');
-    const fullscreenCover = document.querySelector('.fullscreen-cover');
-    const fullscreenTitle = document.querySelector('.fullscreen-title');
-    const fullscreenArtist = document.querySelector('.fullscreen-artist');
-    const fullscreenAlbum = document.querySelector('.fullscreen-album');
-    const fullscreenBg = document.querySelector('.fullscreen-bg');
-    
-    // Get the actual image source
-    let actualImageSrc = playerImage.getAttribute('data-src') || playerImage.src;
-    
-    // Update fullscreen player elements
-    fullscreenCover.src = actualImageSrc;
-    fullscreenTitle.textContent = document.getElementById('player-name').textContent;
-    
-    // Parse album and artist
-    let albumArtist = document.getElementById('player-album').textContent;
-    let parts = albumArtist.split(' - ');
-    if(parts.length >= 2) {
-        fullscreenAlbum.textContent = parts[0];
-        fullscreenArtist.textContent = parts[1];
-    } else {
-        fullscreenAlbum.textContent = albumArtist;
-        fullscreenArtist.textContent = "";
-    }
-    
-    // Set background
-    fullscreenBg.style.backgroundImage = `url('${actualImageSrc}')`;
-    
-    // Show fullscreen player with animation
-    fullscreenPlayer.style.display = 'flex';
-    setTimeout(() => {
-        fullscreenPlayer.classList.add('active');
-    }, 10);
-    
-    // Update play/pause state
-    updatePlayPauseIcon();
-    
-    // Update progress
-    updateProgress();
-}
-
-function togglePlay() {
-    const audio = document.getElementById('player');
-    const fullscreenPlayer = document.querySelector('.fullscreen-player');
-    const playPauseBtn = document.getElementById('play-pause-btn');
-    
-    if (audio.paused) {
-        audio.play();
-        fullscreenPlayer.classList.add('playing');
-        playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
-    } else {
-        audio.pause();
-        fullscreenPlayer.classList.remove('playing');
-        playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
-    }
-}
-
-function updatePlayPauseIcon() {
-    const audio = document.getElementById('player');
-    const playPauseBtn = document.getElementById('play-pause-btn');
-    
-    playPauseBtn.innerHTML = audio.paused ? 
-        '<i class="fas fa-play"></i>' : 
-        '<i class="fas fa-pause"></i>';
-}
-
-function updateProgress() {
-    const audio = document.getElementById('player');
-    const progress = document.querySelector('.progress');
-    const currentTimeSpan = document.querySelector('.current-time');
-    const totalTimeSpan = document.querySelector('.total-time');
-    
-    if (audio.duration) {
-        const percent = (audio.currentTime / audio.duration) * 100;
-        progress.style.width = percent + '%';
-        currentTimeSpan.textContent = formatTime(audio.currentTime);
-        totalTimeSpan.textContent = formatTime(audio.duration);
-    }
-}
-
-function formatTime(seconds) {
-    if (isNaN(seconds)) return '0:00';
-    const minutes = Math.floor(seconds / 60);
-    seconds = Math.floor(seconds % 60);
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-}
+// Make functions globally accessible for onclick handlers
+window.playSong = playSong;
+window.addToDownload = addToDownload;
